@@ -1,4 +1,4 @@
-(function(root, factory) {
+(function (root, factory) {
   if (typeof define === 'function' && define.amd) {
     // AMD. Register as an anonymous module.
     define(['angular'], factory);
@@ -11,7 +11,7 @@
     // Browser globals (root is window)
     root.returnExports = factory(root.angular);
   }
-}(this, function(angular) {
+}(this, function (angular) {
   /**
    * @ngdoc service
    * @name ngMeta.ngMeta
@@ -20,7 +20,7 @@
    * that supports setting arbitrary meta tags
    */
   return angular.module('ngMeta', [])
-    .provider('ngMeta', function() {
+    .provider('ngMeta', function () {
 
       'use strict';
 
@@ -30,6 +30,12 @@
       //One-time configuration
       var config = {
         useTitleSuffix: false
+      };
+
+      var stringResolverStr;
+      // string resolving function
+      var stringResolverFn = function (str) {
+        return str;
       };
 
       function Meta($rootScope, $injector) {
@@ -55,14 +61,16 @@
          *
          * @returns {Object} self
          */
-        var setTitle = function(title, titleSuffix) {
+        var setTitle = function (title, titleSuffix) {
           if (!$rootScope.ngMeta) {
             throw new Error('Cannot call setTitle when ngMeta is undefined. Did you forget to call ngMeta.init() in the run block? \nRefer: https://github.com/vinaygopinath/ngMeta#getting-started');
           }
 
-          $rootScope.ngMeta.title = angular.isDefined(title) ? title : (defaults.title || '');
+          var actualValue = angular.isDefined(title) ? title : (defaults.title || '');
+          $rootScope.ngMeta.title = stringResolverFn(actualValue);
           if (config.useTitleSuffix) {
-            $rootScope.ngMeta.title += angular.isDefined(titleSuffix) ? titleSuffix : (defaults.titleSuffix || '');
+            var actualValue = angular.isDefined(titleSuffix) ? titleSuffix : (defaults.titleSuffix || '');
+            $rootScope.ngMeta.title += stringResolverFn(actualValue);
           }
           return this;
         };
@@ -80,7 +88,7 @@
          *
          * @returns {Object} self
          */
-        var setTag = function(tag, value) {
+        var setTag = function (tag, value) {
           if (!$rootScope.ngMeta) {
             throw new Error('Cannot call setTag when ngMeta is undefined. Did you forget to call ngMeta.init() in the run block? \nRefer: https://github.com/vinaygopinath/ngMeta#getting-started');
           }
@@ -88,7 +96,8 @@
             throw new Error('Attempt to set \'' + tag + '\' through \'setTag\': \'title\' and \'titleSuffix\' are reserved tag names. Please use \'ngMeta.setTitle\' instead');
           }
 
-          $rootScope.ngMeta[tag] = angular.isDefined(value) ? value : defaults[tag];
+          var actualValue = angular.isDefined(value) ? value : defaults[tag];
+          $rootScope.ngMeta[tag] = stringResolverFn(actualValue);
           return this;
         };
 
@@ -104,7 +113,7 @@
          *
          * @returns {Object} self
          */
-        var setDefaultTag = function(tag, value) {
+        var setDefaultTag = function (tag, value) {
           if (!$rootScope.ngMeta) {
             throw new Error('Cannot call setDefaultTag when ngMeta is undefined. Did you forget to call ngMeta.init() in the run block? \nRefer: https://github.com/vinaygopinath/ngMeta#getting-started');
           }
@@ -136,7 +145,7 @@
          *
          * @returns {Object} self
          */
-        var readRouteMeta = function(meta) {
+        var readRouteMeta = function (meta) {
           meta = meta || {};
 
           if (meta.disableUpdate) {
@@ -166,7 +175,7 @@
           }
         };
 
-        var update = function(event, current) {
+        var update = function (event, current) {
           readRouteMeta(angular.copy(current.meta || (current.data && current.data.meta)));
         };
 
@@ -187,15 +196,19 @@
          *   ngMeta.init();
          * });
          */
-        var init = function() {
+        var init = function () {
           $rootScope.ngMeta = {};
           $rootScope.$on('$routeChangeSuccess', update);
           $rootScope.$on('$stateChangeSuccess', update);
           if ($injector.has('$transitions')) {
             var $transitions = $injector.get('$transitions');
-            $transitions.onSuccess({}, function(transition) {
+            $transitions.onSuccess({}, function (transition) {
               update(null, transition.$to());
             });
+          }
+
+          if (stringResolverStr && $injector.has(stringResolverStr)) {
+            stringResolverFn = $injector.get(stringResolverStr);
           }
         };
 
@@ -211,6 +224,16 @@
 
       /**
        * @ngdoc method
+       * @name ngMetaProvider#setStringResolver
+       * @param {string} injectableName The name of the injectable to use to resolve strings.
+       */
+      this.setStringResolver = function (factoryName) {
+        stringResolverStr = factoryName;
+        return this;
+      };
+
+      /**
+       * @ngdoc method
        * @name ngMetaProvider#setDefaultTitle
        * @param {string} titleStr The default title of the page. If a
        * route/state does not define a `title` param in its meta object, this
@@ -222,7 +245,7 @@
        *
        * @returns {Object} self
        */
-      this.setDefaultTitle = function(titleStr) {
+      this.setDefaultTitle = function (titleStr) {
         defaults.title = titleStr;
         return this;
       };
@@ -240,7 +263,7 @@
        *
        * @returns {Object} self
        */
-      this.setDefaultTitleSuffix = function(titleSuffix) {
+      this.setDefaultTitleSuffix = function (titleSuffix) {
         defaults.titleSuffix = titleSuffix;
         return this;
       };
@@ -260,7 +283,7 @@
        *
        * @returns {Object} self
        */
-      this.setDefaultTag = function(tag, value) {
+      this.setDefaultTag = function (tag, value) {
         defaults[tag] = value;
         return this;
       };
@@ -278,7 +301,7 @@
        *
        * @returns {Object} self
        */
-      this.useTitleSuffix = function(bool) {
+      this.useTitleSuffix = function (bool) {
         config.useTitleSuffix = !!bool;
         return this;
       };
@@ -295,8 +318,8 @@
        *
        * @returns {Object} data
        */
-      this.mergeNestedStateData = function(state, parentDecoratorFn) {
-      // original data
+      this.mergeNestedStateData = function (state, parentDecoratorFn) {
+        // original data
         var originalData = parentDecoratorFn(state) || {};
 
         // create new merged meta
@@ -312,7 +335,7 @@
       };
 
 
-      this.$get = function($rootScope, $injector) {
+      this.$get = function ($rootScope, $injector) {
         return new Meta($rootScope, $injector);
       };
     });
